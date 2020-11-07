@@ -3,12 +3,8 @@ layout: post
 title: Refactoring a TypeScript function, part 1.
 categories: [TypeScript]
 ---
-<!-- 
-Let's say I'm working on an Angular project that is integrating a web component. This component is a navigation bar that extend its behaviour by adding custom options in a dropdown. Usually these options are links to navigate to external pages. However these options can also fire events that can be handled on the Angular application and run any code we want.
 
-This is how one of these events would look like in the console: -->
-
-En un proyecto tuve que utilizar un componente web que tenía la capacidad de comunicarse con el resto de la aplicación mediante eventos. Este componente era cerrado y no podía modificarlo, pero era configurable mediante parámetros de entrada que permitían modificar el detalle de los eventos que emitían.
+In a previous project I had to use a web component that communicated with the rest of an Angular application through events. This component was closed and I could not modify it, but it was configurable through input parameters that allowed to modify the detail of the events that were issued.
 
 ```
 CustomEvent: {
@@ -21,19 +17,7 @@ CustomEvent: {
 }
 ```
 
-Dependiendo del código del detalle tendremos que ejecutar una determinada función en la aplicación Angular, de modo que en el handler del evento añadiremos un bloque if para asegurarnos de que ejecutamos la función que queremos para el código showDialog. En este caso, mostraremos un diálogo.
-
-<!-- ```html
-<web-component-navbar
-  [languageOptions]="languageOptions"
-  [mainOptions]="mainOptions"
-  [customOptions]="customOptions">
-<web-component-navbar>
-``` -->
-<!-- 
-So firstly I register the event in my Angular application. As I already know the properties of the event detail, it would be nice to create a type with TypeScript.
-
-In the event callback we add an expression to filter the code.  -->
+Depending on the code of the detail we will have to execute a certain function in the Angular application, so in the event handler we will add an if block to make sure that we execute the function we want for the showDialog code. In this case we will display a dialog on screen.
 
 ```typescript
 document.addEventListener("optionClick", event => {
@@ -43,7 +27,7 @@ document.addEventListener("optionClick", event => {
 });
 ```
 
-No obstante, es posible que a lo largo del ciclo de vida de esta aplicación tengamos que extender la funcionalidad del web component con nuevos códigos de evento. A partir del código existente podríamos extender el bloque if añadiendo una sentencia else por cada nuevo código que haya que gestionar.
+However, it is possible that throughout the life cycle of this application we will have to extend the functionality of the web component with new event codes. From the existing code we could extend the if block by adding a else statement for each new code to be managed.
 
 ```typescript
 document.addEventListener("optionClick", event => {
@@ -57,7 +41,7 @@ document.addEventListener("optionClick", event => {
 });
 ```
 
-El problema aquí es que la cantidad la cantidad de funciones y eventos nuevos no está definida. Podría quedarse en tres, o podrían ser veinte, por lo que veinte bloques if anidados podría no ser la solución más elegante. Una alternativa a esto podría ser la sentencia switch, pero se repetiría el problema de que es un bloque de código muy largo. ¿Cómo podríamos simplificar la gestión de pares código-función?
+The problem here is that the number of new functions and events is not final. It could be three, or it could be twenty, so twenty nested if blocks might not be the most elegant solution. An alternative to this could be the switch statement, but it would repeat the problem that it is a very long code block. How could we simplify the management of code-function pairs?
 
 ```typescript
 document.addEventListener("optionClick", event => {
@@ -76,9 +60,8 @@ document.addEventListener("optionClick", event => {
 });
 ```
 
-### Factoría de métodos como solución
-<!-- TODO Explicar cómo es el patrón factoría -->
-Mediante la variable eventFactory podemos indexar los códigos del detalle de los eventos emitidos y asociarlos a los métodos que queremos ejecutar.
+### Factory method as a solution
+Using the variable eventFactory we can index the codes inside the detail of the issued events and associate them to the methods that we want to execute.
 
 ```typescript
 const eventFactory = {
@@ -88,7 +71,7 @@ const eventFactory = {
 };
 ```
 
-Podemos añadir un tipo a esta factoría mediante los tipos indexados de TypeScript. De esta forma definimos que los índices, que en este caso son los códigos de los eventos, deben ser de tipo string, mientras que la respuesta es una función sin signature ni respuesta.
+We can add a type to this factory using TypeScript's indexed types. This way we define that the indexes, which in this case are the event codes, must be of type string, while the response is a function with no signature or response.
 
 ```typescript
 export type EventHandlerFactory = {
@@ -102,17 +85,17 @@ const eventFactory: EventHandlerFactory = {
 };
 ```
 
-De esta forma podemos acceder a un método a partir de su correspondiente código y ejecutarlo sin necesidad de usar sentencias de control.
+This way we can access a method from its corresponding code and execute it without using control sentences.
 
 ```typescript
 document.addEventListener("optionClick", (event: CustomEvent<OptionClick>) => {
-  eventFactory[event.detail.code](); // Recuerda añadir ()
+  eventFactory[event.detail.code](); // Remember to add ()
 });
 ```
 
-### Añadiendo restricciones a las propiedades con TypeScript
+### Adding restrictions to properties with TypeScript
 
-Es posible que mientras declaremos la variable eventFactory cometamos un error tipográfico en la escritura de una de las propiedades.
+It is possible that while declaring the variable eventFactory we have a typo while writing one of the properties.
 
 ```typescript
 const eventFactory: EventHandlerFactory = {
@@ -120,17 +103,17 @@ const eventFactory: EventHandlerFactory = {
 }
 ```
 
-Cuando el handler reciba el evento con el código showDialog intentará ejecutarlo a través de eventFactoy y no encontrará ninguna función asociada a ese nombre, por lo que devolverá el error `Uncaught TypeError: eventFactory.showDialog is not a function`.
+When the handler receives the event with the code showDialog it will try to run it through eventFactoy and will not find any function associated with that name, so it will return the error `Uncaught TypeError: eventFactory.showDialog is not a function`.
 
-¿Cómo podemos evitar esto? Una forma de darnos cuenta de que cometemos un error tipográfico es que nuestro editor de código sea capaz de avisarnos. Para ello modificaremos la definición del tipo EventHandlerFactory haciendo uso de las características de TypeScript.
+How can we avoid this? One way to do this is to allow the code editor to show an error when we make a typo in the property name. To do this, we will modify the definition of the EventHandlerFactory type by using some of the TypeScript features.
 
-Definiremos el tipo AllowedCode como un conjunto de literales correspondientes con los códigos de evento que esperamos gestionar.
+We will define the AllowedCode type as a set of corresponding literals with the event codes that we expect to manage.
 
 ```typescript
 type AllowedCode = "showDialog" | "anotherEvent" | "evenAnotherEvent";
 ```
 
-Y después modificamos la definición de EventHandlerFactory tal como vemos en el extracto de código de debajo. Anteriormente la definición `[K in string]` establecía que las propiedades debían ser string, pero ahora con la definición `[K in AllowedCode]` las propiedades deben formar parte del conjunto AllowedCode.
+And then we modify the definition of EventHandlerFactory as we see in the code extract below. Previously the definition `[K in string]` established that the properties should be string, but now with the definition `[K in AllowedCode]` the properties should be part of the AllowedCode set.
 
 ```typescript
 export type EventHandlerFactory = {
@@ -138,7 +121,7 @@ export type EventHandlerFactory = {
 };
 ```
 
-De esta forma, si cometemos un error tipográfico el analizador estático de nuestro editor de código nos avisará de que hemos cometido un error en nuestro código.
+This way, if we make a typo the static analyzer of our code editor will warn us that we have an error.
 
 ```typescript
 const eventFactory: EventHandlerFactory = {
@@ -146,11 +129,11 @@ const eventFactory: EventHandlerFactory = {
 }
 ```
 
-#### Bonus: accediendo a los valores de códigos permitidos en tiempo de ejecución.
+### Bonus: reading allowed codes in runtime.
 
-Posiblemente se de la situación de que tengamos que leer el valor del conjunto AllowedCode en tiempo de ejecución. Por ejemplo, si estamos recibiendo eventos distintos a los que esperábamos y queremos filtrarlos para no tener errores al intentar ejecutarlos.
+We may have to read the value of the AllowedCode set at runtime. For example, if we are receiving different events from the ones we expected and we want to filter them in order not to have errors when trying to execute them.
 
-El problema que nos encontramos es que AllowedCode es un tipo y los tipos no existen en tiempo de ejecución. ¿Cómo podemos solucionar esto? Simplemente utilizando un enumerable en lugar de un tipo.
+The problem that we found is that AllowedCode is a type and types do not exist at runtime. How can we solve this? Simply by using an enum instead of a type.
 
 ```typescript
 enum AllowedCodes {
@@ -160,24 +143,23 @@ enum AllowedCodes {
 }
 ```
 
-<!-- TODO explicar por qué no puedo acceder a los tipos en tiempo de ejecución -->
-De esta forma sí que podemos acceder a esta lista de valores durante el tiempo de ejecución, tal y como podemos ver en el código de debajo. Y no sólo eso, sino que la funcionalidad del tipo EventHandlerFactory se mantiene igual, ya que está permitido que los índices de los tipos indexados pertenezcan a un enumerable.
+This way we can access the list of values during runtime, as we can see in the code below. Also the functionality of the type EventHandlerFactory remains the same, since indexes can be part of an enum.
 
 ```typescript
 export type EventHandlerFactory = {
-  [K in AllowedCodes]: () => void; // Funciona incluso si AllowedCodes es enum
+  [K in AllowedCodes]: () => void; // Still works if AllowedCodes is an enum
 };
 ```
 
 ```typescript
 document.addEventListener("optionClick", (event: CustomEvent<OptionClick>) => {
   const eventCode = event.detail.code;
-  if (eventCode in AllowedCodes) { // Como es un enum, podemos leerlo en tiempo de ejecucion y usarlo para filtrar
+  if (eventCode in AllowedCodes) { // We can read it in runtime and use it to control the logic flow
     this.helpMenuActionFactory[eventCode]();
   }
 });
 ```
 
-Como habéis podéis comprobar TypeScript es una herramienta muy potente que puede aportar mucha calidad a tus proyectos mediante la comprobación de tipos, evitándonos errores en tiempo de ejecución.
+As you can see, TypeScript is a very powerful tool that can bring a lot of quality to your projects by checking types, avoiding errors at runtime.
 
-En las próximas entradas profundizaré más en algunas funcionalidades de TypeScript interesantes, ¡hasta la próxima!
+In future posts I will go deeper into some interesting TypeScript features.
