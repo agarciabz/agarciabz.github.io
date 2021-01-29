@@ -33,7 +33,7 @@ This is a plug-and-play Jekyll theme best suited to use on [GitHub Pages](https:
 - Syntax highlighting using Pygments
     - [Dracula syntax theme](https://draculatheme.com/) included
 - Disqus commenting
-- Social media icons
+- Social media iconssdfasdfasdfsdfasdf
 - Google Analytics integration
 - Fuzzy search across blog posts
 - Blog with pagination
