@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Refactoring a TypeScript function, part 1.
+title: Refactoring a TypeScript function
 categories: [TypeScript]
 ---
 
@@ -20,7 +20,7 @@ CustomEvent: {
 Depending on the code of the detail we will have to execute a certain function in the Angular application, so in the event handler we will add an if block to make sure that we execute the function we want for the showDialog code. In this case we will display a dialog on screen.
 
 ```typescript
-document.addEventListener("optionClick", event => {
+document.addEventListener("optionClick", (event) => {
   if (event.detail.code === "showDialog") {
     this.showDialog();
   }
@@ -30,7 +30,7 @@ document.addEventListener("optionClick", event => {
 However, it is possible that throughout the life cycle of this application we will have to extend the functionality of the web component with new event codes. From the existing code we could extend the if block by adding a else statement for each new code to be managed.
 
 ```typescript
-document.addEventListener("optionClick", event => {
+document.addEventListener("optionClick", (event) => {
   if (event.detail.code === "showDialog") {
     this.showDialog();
   } else if (event.detail.code === "anotherEvent") {
@@ -44,15 +44,15 @@ document.addEventListener("optionClick", event => {
 The problem here is that the number of new functions and events is not final. It could be three, or it could be twenty, so twenty nested if blocks might not be the most elegant solution. An alternative to this could be the switch statement, but it would repeat the problem that it is a very long code block. How could we simplify the management of code-function pairs?
 
 ```typescript
-document.addEventListener("optionClick", event => {
+document.addEventListener("optionClick", (event) => {
   switch (event.detail.helpSelected) {
     case "showDialog":
       this.showReleaseDialog();
       break;
-    case 'anotherEvent':
+    case "anotherEvent":
       this.anotherFunction();
       break;
-    case 'evenAnotherEvent':
+    case "evenAnotherEvent":
       this.evenAnotherFunction();
       break;
     // ... more to come?
@@ -61,6 +61,7 @@ document.addEventListener("optionClick", event => {
 ```
 
 ### Factory method as a solution
+
 Using the variable eventFactory we can index the codes inside the detail of the issued events and associate them to the methods that we want to execute.
 
 ```typescript
@@ -100,7 +101,7 @@ It is possible that while declaring the variable eventFactory we have a typo whi
 ```typescript
 const eventFactory: EventHandlerFactory = {
   showDialgo: this.showDialog, // should be 'showDialog' instead of 'showDialgo'
-}
+};
 ```
 
 When the handler receives the event with the code showDialog it will try to run it through eventFactoy and will not find any function associated with that name, so it will return the error `Uncaught TypeError: eventFactory.showDialog is not a function`.
@@ -126,7 +127,7 @@ This way, if we make a typo the static analyzer of our code editor will warn us 
 ```typescript
 const eventFactory: EventHandlerFactory = {
   showDialgo: this.showDialog, // Type '{ showDialgo: () => void; }' is not assignable to type 'EventHandlerFactory'.
-}
+};
 ```
 
 ### Bonus: reading allowed codes in runtime.
@@ -137,9 +138,9 @@ The problem that we found is that AllowedCode is a type and types do not exist a
 
 ```typescript
 enum AllowedCodes {
-  showDialog = 'showDialog',
-  anotherEvent = 'anotherEvent',
-  evenAnotherEvent = 'evenAnotherEvent'
+  showDialog = "showDialog",
+  anotherEvent = "anotherEvent",
+  evenAnotherEvent = "evenAnotherEvent",
 }
 ```
 
@@ -154,7 +155,8 @@ export type EventHandlerFactory = {
 ```typescript
 document.addEventListener("optionClick", (event: CustomEvent<OptionClick>) => {
   const eventCode = event.detail.code;
-  if (eventCode in AllowedCodes) { // We can read it in runtime and use it to control the logic flow
+  if (eventCode in AllowedCodes) {
+    // We can read it in runtime and use it to control the logic flow
     this.helpMenuActionFactory[eventCode]();
   }
 });
